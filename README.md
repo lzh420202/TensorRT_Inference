@@ -6,6 +6,10 @@
 
 This implement is modified from [TensorRT/efficientdet](https://github.com/NVIDIA/TensorRT/tree/main/samples/python/efficientdet). 
 
+
+![detection](result/P0006__1__0___0.png)
+![detection](result/P0017__1__0___0.png)
+
 ## Recommend system environments:
  - Jetson Xavier NX / Jetson AGX Xavier
  - python 3.6
