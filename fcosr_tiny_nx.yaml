@@ -1,0 +1,30 @@
+model:
+  engine_file: '/home/nvidia/Desktop/FCOSR/model/epoch_36_16_lite_nx.trt'
+  labels: 'labels.txt'
+  num_speed: 2000
+io:
+  input_dir: '/home/nvidia/DOTA_TEST/images/'
+  output_dir: 'result'
+preprocess:
+  num_process: 8
+  queue_length: 40
+  normalization:
+    enable: 1
+    mean:
+      - 123.675
+      - 116.28
+      - 103.53
+    std:
+      - 58.395
+      - 57.12
+      - 57.375
+postprocess:
+  num_process: 6
+  queue_length: 40
+  nms_threshold: 0.1
+  score_threshold: 0.1
+  max_det_num: 2000
+  draw_image:
+    enable: 0
+    output_dir: 'result'
+    num: 20

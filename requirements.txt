@@ -1,0 +1,4 @@
+numpy
+pycuda
+shapely
+tqdm
