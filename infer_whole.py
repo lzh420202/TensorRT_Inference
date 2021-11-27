@@ -29,6 +29,10 @@ def parse_label_file(file):
     return labels
 
 
+def is_image(path):
+    extensions = [".jpg", ".jpeg", ".png", ".bmp"]
+    return os.path.isfile(path) and os.path.splitext(path)[1].lower() in extensions
+
 def main(cfg):
     assert cfg['whole_mode'] == 1
     lock = Manager().Lock()
@@ -52,7 +56,11 @@ def main(cfg):
                          mean=cfg_norm['mean'],
                          std=cfg_norm['std'])
     split_cfg = cfg_preprocess['split']
-    preprecess_pool = preprogress_data(cfg_io['input_dir'], preprogress_queue, processor_num, lock, normalization, split_cfg)
+
+    images = [os.path.join(cfg_io['input_dir'], f) for f in os.listdir(cfg_io['input_dir']) if is_image(os.path.join(cfg_io['input_dir'], f))]
+    images.sort()
+
+    preprecess_pool = preprogress_data(images, preprogress_queue, processor_num, lock, normalization, split_cfg)
     post_processor_num = cfg_postprocess['num_process']
 
     post_process_input_queue = Manager().Queue(cfg_postprocess['queue_length'])

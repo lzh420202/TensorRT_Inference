@@ -80,7 +80,7 @@ def preprogress_data_imread(image_list,
     for pipe in pipes:
         pipe.send(None)
 
-def preprogress_data(image_dir,
+def preprogress_data(image_list,
                      data_queue: Manager().Queue,
                      num_processor,
                      lock: Manager().Lock,
@@ -95,12 +95,7 @@ def preprogress_data(image_dir,
     stdinv = 1.0 / np.float64(std.reshape(1, -1))
     norm_cfg = dict(enable=normalization['enable'], mean=mean, std=stdinv)
 
-    extensions = [".jpg", ".jpeg", ".png", ".bmp"]
-    def is_image(path):
-        return os.path.isfile(path) and os.path.splitext(path)[1].lower() in extensions
 
-    images = [os.path.join(image_dir, f) for f in os.listdir(image_dir) if is_image(os.path.join(image_dir, f))]
-    images.sort()
     pool = Pool(num_processor + 1)
     pipe_sends = []
     pipe_recvs = []
@@ -108,7 +103,7 @@ def preprogress_data(image_dir,
         send, recv = Pipe()
         pipe_sends.append(send)
         pipe_recvs.append(recv)
-    pool.apply_async(preprogress_data_imread, (images, pipe_sends, lock, split_cfg))
+    pool.apply_async(preprogress_data_imread, (image_list, pipe_sends, lock, split_cfg))
     for i in range(num_processor):
         pool.apply_async(preprogress_data_unit, (pipe_recvs[i], data_queue, norm_cfg))
 
