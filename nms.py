@@ -121,3 +121,41 @@ def multiclass_poly_nms_rbbox(multi_rbboxes,
         labels = np.zeros((0,), dtype=np.int32)
 
     return bboxes, labels
+
+def multiclass_poly_nms_rbbox_patches(multi_rbboxes,
+                                      multi_labels,
+                                      num_classes,
+                                      nms_thr):
+    """
+    NMS for multi-class bboxes.
+    :param multi_rbboxes: [N, 9]
+    :param multi_scores: [N, class]
+    :param score_thr:
+    :param nms_cfg:
+    :param max_num:
+    :param score_factors:
+    :return:
+    """
+    bboxes, labels = [], []
+    for i in range(num_classes):
+        cls_inds = multi_labels == i
+        if not np.any(cls_inds):
+            continue
+        if multi_rbboxes.shape[1] == 9:
+            cls_dets_ = multi_rbboxes[cls_inds, :]
+        else:
+            raise ValueError("Unsupport input shape.")
+
+        cls_dets, _ = py_cpu_nms_poly_fast(cls_dets_, nms_thr)
+
+        cls_labels = np.full((cls_dets.shape[0], ), i, dtype=np.int32)
+        bboxes.append(cls_dets)
+        labels.append(cls_labels)
+    if bboxes:
+        bboxes = np.concatenate(bboxes, axis=0)
+        labels = np.concatenate(labels)
+    else:
+        bboxes = np.zeros((0, 9))
+        labels = np.zeros((0,), dtype=np.int32)
+
+    return bboxes, labels

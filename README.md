@@ -33,11 +33,15 @@ pip install -r requirements.txt
 
 We define configure file (yaml) to replace plenty of args.
 ```shell
-python infer_multi.py fcosr_tiny_nx.yaml
+# Small pictures inference mode
+python infer_multi.py -f fcosr_tiny_nx.yaml
+# Big whole picture inference mode
+python infer_whole.py -f fcosr_tiny_agx_whole.yaml
 ```
 
 A configure file demo is:
 ```yaml
+whole_mode: 1  # whole mode switch
 model:
   engine_file: '/home/nvidia/Desktop/FCOSR/model/epoch_36_16_lite_nx.trt' # TensorRT engine file path
   labels: 'labels.txt' # calss name
@@ -58,6 +62,9 @@ preprocess: # preprocess configure
       - 58.395
       - 57.12
       - 57.375
+  split:    # split configure, only support whole mode.
+    subsize: 1024
+    gap: 200
 postprocess: # postprocess configure
   num_process: 6 # multi process
   queue_length: 40

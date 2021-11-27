@@ -34,6 +34,7 @@ def parse_label_file(file):
 
 
 def main(cfg):
+    assert cfg['whole_mode'] == 0
     cfg_io = cfg['io']
     cfg_model = cfg['model']
     cfg_preprocess = cfg['preprocess']
