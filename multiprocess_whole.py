@@ -28,9 +28,6 @@ def generate_split_box(image_shape, split_size, gap):
                 offset_w = max(0, width - split_size)
             boxes.append([offset_h, min(height, offset_h + split_size),
                           offset_w, min(width, offset_w + split_size)])
-
-            # boxes.append([i * stride_length, min(height, i * stride_length + split_size),
-            #               j * stride_length, min(width, j * stride_length + split_size)])
     return boxes
 
 
@@ -61,6 +58,7 @@ def preprogress_data_unit(pipe, queue, normalization):
                                offset=(box[2], box[0]),
                                patch_num=meta['patch_num']))
         else:
+            queue.put(None)
             break
 
 def preprogress_data_imread(image_list,
@@ -135,11 +133,12 @@ def post_process_unit(input_queue: Manager().Queue, cache_queue: Manager().Queue
             break
 
 
-def post_process_collect(cache_queue: Manager().Queue, output_queue: Manager().Queue, lock: Manager().Lock, det_cfg):
+def post_process_collect(cache_queue: Manager().Queue, output_queue: Manager().Queue, lock: Manager().Lock, det_cfg, num_processor):
     cache_box = []
     cache_label = []
     patch_count = 0
     image_path = ''
+    count = 0
     while True:
         cache_data = cache_queue.get()
         if cache_data:
@@ -165,9 +164,11 @@ def post_process_collect(cache_queue: Manager().Queue, output_queue: Manager().Q
                 lock.release()
                 continue
         else:
-            print('Close post collector.')
-            output_queue.put(None)
-            break
+            count += 1
+            if count == num_processor:
+                print('Close post collector.')
+                output_queue.put(None)
+                break
 
 
 def post_process(num_processor,
@@ -180,7 +181,7 @@ def post_process(num_processor,
     cache_queue = Manager().Queue(cache_size)
     for i in range(num_processor):
         pool.apply_async(func=post_process_unit, args=(input_queue, cache_queue, det_cfg))
-    pool.apply_async(func=post_process_collect, args=(cache_queue, output_queue, lock, det_cfg))
+    pool.apply_async(func=post_process_collect, args=(cache_queue, output_queue, lock, det_cfg, num_processor))
     return pool
 
 
