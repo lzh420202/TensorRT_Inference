@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import os
 import math
+import time
 from nms import multiclass_poly_nms_rbbox, multiclass_poly_nms_rbbox_patches
 from visualize import draw_result
 DEBUG = False
@@ -22,11 +23,11 @@ def generate_split_box(image_shape, split_size, gap):
             offset_h = i * stride_length
             offset_w = j * stride_length
             if offset_h + split_size > height:
-                offset_h = height - split_size
+                offset_h = max(0, height - split_size)
             if offset_w + split_size > width:
-                offset_w = width - split_size
-            boxes.append([offset_h, offset_h + split_size,
-                          offset_w, offset_w + split_size])
+                offset_w = max(0, width - split_size)
+            boxes.append([offset_h, min(height, offset_h + split_size),
+                          offset_w, min(width, offset_w + split_size)])
 
             # boxes.append([i * stride_length, min(height, i * stride_length + split_size),
             #               j * stride_length, min(width, j * stride_length + split_size)])
@@ -74,9 +75,11 @@ def preprogress_data_imread(image_list,
         per_list_num = math.ceil(len(boxes) / len(pipes))
         image_meta = dict(image_path=image, patch_size=split_cfg['subsize'], gap=split_cfg['gap'], patch_num=len(boxes))
         lock.acquire()
+        t = time.time()
         for i, pipe in enumerate(pipes):
             per_boxes = boxes[i * per_list_num: (i + 1) * per_list_num]
             pipe.send((img, per_boxes, image_meta))
+
     for pipe in pipes:
         pipe.send(None)
 
