@@ -81,18 +81,14 @@ def main(cfg):
     count = 0
     while True:
         data = preprogress_queue.get()
-        if not data:
+        if data:
+            bboxes, labels = trt_infer.infer(data['image'])
+            # print('111')
+            post_process_input_queue.put(dict(box=bboxes, score=labels, image_path=data['image_path'], offset=data['offset'], patch_num=data['patch_num']))
+        else:
             count += 1
             if count == pre_processor_num:
                 break
-            else:
-                continue
-        bboxes, labels = trt_infer.infer(data['image'])
-        post_process_input_queue.put(dict(box=bboxes,
-                                          score=labels,
-                                          image_path=data['image_path'],
-                                          offset=data['offset'],
-                                          patch_num=data['patch_num']))
     preprecess_pool.close()
     preprecess_pool.join()
     post_process_input_queue.put(None)

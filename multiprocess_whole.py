@@ -65,7 +65,8 @@ def preprogress_data_imread(image_list,
                             pipes,
                             lock: Manager().Lock,
                             split_cfg=dict(subsize=1024, gap=200)):
-    for image in image_list:
+    t = 0
+    for i, image in enumerate(image_list):
         img = cv2.imread(image, cv2.IMREAD_COLOR)
         cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
         h, w, _ = img.shape
@@ -73,7 +74,11 @@ def preprogress_data_imread(image_list,
         per_list_num = math.ceil(len(boxes) / len(pipes))
         image_meta = dict(image_path=image, patch_size=split_cfg['subsize'], gap=split_cfg['gap'], patch_num=len(boxes))
         lock.acquire()
+        if i >= 1:
+            basename = os.path.basename(image_list[i - 1])
+            print(f'{basename}: size {h}x{w}, patch {len(boxes)}, time {time.time() - t: .2f} Sec.')
         t = time.time()
+
         for i, pipe in enumerate(pipes):
             per_boxes = boxes[i * per_list_num: (i + 1) * per_list_num]
             pipe.send((img, per_boxes, image_meta))
@@ -95,7 +100,6 @@ def preprogress_data(image_list,
     std = np.array(normalization['std'])
     stdinv = 1.0 / np.float64(std.reshape(1, -1))
     norm_cfg = dict(enable=normalization['enable'], mean=mean, std=stdinv)
-
 
     pool = Pool(num_processor + 1)
     pipe_sends = []
@@ -169,6 +173,8 @@ def post_process_collect(cache_queue: Manager().Queue, output_queue: Manager().Q
                 print('Close post collector.')
                 output_queue.put(None)
                 break
+            else:
+                continue
 
 
 def post_process(num_processor,

@@ -28,5 +28,5 @@ postprocess:
   score_threshold: 0.3
   max_det_num: 2000
   draw_image:
-    enable: 1
+    enable: 0
     num: 'all'
