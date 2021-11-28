@@ -1,4 +1,4 @@
-from multiprocessing import (Pipe, Lock, Queue, Process)
+from multiprocessing import (Manager, Pool, Pipe)
 import numpy as np
 import cv2
 import os
@@ -7,7 +7,6 @@ import time
 from nms import multiclass_poly_nms_rbbox, multiclass_poly_nms_rbbox_patches
 from visualize import draw_result
 DEBUG = False
-
 
 def generate_split_box(image_shape, split_size, gap):
     height, width = image_shape
@@ -32,7 +31,7 @@ def generate_split_box(image_shape, split_size, gap):
     return boxes
 
 
-def preprocess_data_unit(pipe, queue, normalization):
+def preprogress_data_unit(pipe, queue, normalization):
     while True:
         data = pipe.recv()
         if data:
@@ -62,11 +61,10 @@ def preprocess_data_unit(pipe, queue, normalization):
             queue.put(None)
             break
 
-
-def preprocess_data_imread(image_list,
-                           pipes,
-                           lock: Lock,
-                           split_cfg=dict(subsize=1024, gap=200)):
+def preprogress_data_imread(image_list,
+                            pipes,
+                            lock: Manager().Lock,
+                            split_cfg=dict(subsize=1024, gap=200)):
     t = 0
     for i, image in enumerate(image_list):
         img = cv2.imread(image, cv2.IMREAD_COLOR)
@@ -88,15 +86,14 @@ def preprocess_data_imread(image_list,
     for pipe in pipes:
         pipe.send(None)
 
-
-def preprocess_data(image_list,
-                    data_queue: Queue,
-                    num_processor,
-                    lock: Lock,
-                    normalization=dict(enable=True,
+def preprogress_data(image_list,
+                     data_queue: Manager().Queue,
+                     num_processor,
+                     lock: Manager().Lock,
+                     normalization=dict(enable=True,
                                         mean=[123.675, 116.28, 103.53],
                                         std=[58.395, 57.12, 57.375]),
-                    split_cfg=dict(subsize=1024,
+                     split_cfg=dict(subsize=1024,
                                     gap=200)):
     mean_ = np.array(normalization['mean'])
     mean = np.float64(mean_.reshape(1, -1))
@@ -104,23 +101,20 @@ def preprocess_data(image_list,
     stdinv = 1.0 / np.float64(std.reshape(1, -1))
     norm_cfg = dict(enable=normalization['enable'], mean=mean, std=stdinv)
 
-    process = []
+    pool = Pool(num_processor + 1)
     pipe_sends = []
     pipe_recvs = []
     for i in range(num_processor):
         send, recv = Pipe()
         pipe_sends.append(send)
         pipe_recvs.append(recv)
-    p = Process(target=preprocess_data_imread, args=(image_list, pipe_sends, lock, split_cfg))
-    process.append(p)
+    pool.apply_async(preprogress_data_imread, (image_list, pipe_sends, lock, split_cfg))
     for i in range(num_processor):
-        p = Process(target=preprocess_data_unit, args=(pipe_recvs[i], data_queue, norm_cfg))
-        process.append(p)
+        pool.apply_async(preprogress_data_unit, (pipe_recvs[i], data_queue, norm_cfg))
 
-    return process
+    return pool
 
-
-def postprocess_unit(input_queue: Queue, cache_queue: Queue, det_cfg):
+def post_process_unit(input_queue: Manager().Queue, cache_queue: Manager().Queue, det_cfg):
     while True:
         input_data = input_queue.get()
         if input_data:
@@ -143,7 +137,7 @@ def postprocess_unit(input_queue: Queue, cache_queue: Queue, det_cfg):
             break
 
 
-def postprocess_collect(cache_queue: Queue, output_queue: Queue, lock: Lock, det_cfg, num_processor):
+def post_process_collect(cache_queue: Manager().Queue, output_queue: Manager().Queue, lock: Manager().Lock, det_cfg, num_processor):
     cache_box = []
     cache_label = []
     patch_count = 0
@@ -176,26 +170,25 @@ def postprocess_collect(cache_queue: Queue, output_queue: Queue, lock: Lock, det
         else:
             count += 1
             if count == num_processor:
+                print('Close post collector.')
                 output_queue.put(None)
                 break
             else:
                 continue
 
 
-def postprocess(num_processor,
-                input_queue: Queue,
-                output_queue: Queue,
-                cache_size: int,
-                lock: Lock,
-                det_cfg):
-    process = []
-    cache_queue = Queue(cache_size)
+def post_process(num_processor,
+                 input_queue: Manager().Queue,
+                 output_queue: Manager().Queue,
+                 cache_size: int,
+                 lock: Manager().Lock,
+                 det_cfg):
+    pool = Pool(num_processor + 1)
+    cache_queue = Manager().Queue(cache_size)
     for i in range(num_processor):
-        p = Process(target=postprocess_unit, args=(input_queue, cache_queue, det_cfg))
-        process.append(p)
-    p = Process(target=postprocess_collect, args=(cache_queue, output_queue, lock, det_cfg, num_processor))
-    process.append(p)
-    return process
+        pool.apply_async(func=post_process_unit, args=(input_queue, cache_queue, det_cfg))
+    pool.apply_async(func=post_process_collect, args=(cache_queue, output_queue, lock, det_cfg, num_processor))
+    return pool
 
 
 def output_result(output_dir, ALL_LABEL, result_queue, draw_cfg=dict(enable=False, num=20)):

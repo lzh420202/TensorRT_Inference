@@ -15,10 +15,12 @@
 #
 import os
 import sys
+import time
 import argparse
 from model_inference import TensorRTInfer
-from multiprocessing import (Queue, Process, Lock)
-from multiprocess_whole import (preprocess_data, postprocess, output_result)
+from multiprocessing import (Manager, Pool)
+from multiprocess_whole_pool import (preprogress_data, post_process, output_result)
+import copy
 
 
 def parse_label_file(file):
@@ -31,10 +33,9 @@ def is_image(path):
     extensions = [".jpg", ".jpeg", ".png", ".bmp"]
     return os.path.isfile(path) and os.path.splitext(path)[1].lower() in extensions
 
-
 def main(cfg):
     assert cfg['whole_mode'] == 1
-    lock = Lock()
+    lock = Manager().Lock()
     cfg_io = cfg['io']
     cfg_model = cfg['model']
     cfg_preprocess = cfg['preprocess']
@@ -46,9 +47,8 @@ def main(cfg):
     if cfg_model['labels']:
         ALL_LABEL = parse_label_file(cfg_model['labels'])
 
-    print(f"Load TensorRT engine: {cfg_model['engine_file']}")
     trt_infer = TensorRTInfer(cfg_model['engine_file'])
-    preprocess_queue = Queue(cfg_preprocess['queue_length'])
+    preprogress_queue = Manager().Queue(cfg_preprocess['queue_length'])
     pre_processor_num = cfg_preprocess['num_process']
 
     cfg_norm = cfg_preprocess['normalization']
@@ -59,63 +59,44 @@ def main(cfg):
 
     images = [os.path.join(cfg_io['input_dir'], f) for f in os.listdir(cfg_io['input_dir']) if is_image(os.path.join(cfg_io['input_dir'], f))]
     images.sort()
-    print(f"Scan input folder, {len(images)} images.")
 
-    print(f"Create preprocessor")
-    preprecessor = preprocess_data(images, preprocess_queue, pre_processor_num, lock, normalization, split_cfg)
-    postprocessor_num = cfg_postprocess['num_process']
+    preprecess_pool = preprogress_data(images, preprogress_queue, pre_processor_num, lock, normalization, split_cfg)
+    post_processor_num = cfg_postprocess['num_process']
 
-    postprocess_input_queue = Queue(cfg_postprocess['queue_length'])
-    postprocess_output_queue = Queue(-1)
+    post_process_input_queue = Manager().Queue(cfg_postprocess['queue_length'])
+    post_process_output_queue = Manager().Queue(-1)
     det_cfg = dict(score_threshold=cfg_postprocess['score_threshold'],
                    nms_threshold=cfg_postprocess['nms_threshold'],
                    max_det_num=cfg_postprocess['max_det_num'])
-    print(f"Create postprocessor")
-    postprocessor = postprocess(postprocessor_num,
-                                postprocess_input_queue,
-                                postprocess_output_queue,
-                                cfg_postprocess['queue_length'],
-                                lock,
-                                det_cfg)
+    post_processor = post_process(post_processor_num,
+                                  post_process_input_queue,
+                                  post_process_output_queue,
+                                  cfg_postprocess['queue_length'],
+                                  lock,
+                                  det_cfg)
     cfg_draw = cfg_postprocess['draw_image']
     cfg_draw = dict(enable=bool(cfg_draw['enable']), num=cfg_draw['num'])
-    print(f"Create result collector")
-    collector = Process(target=output_result, args=(output_dir, ALL_LABEL, postprocess_output_queue, cfg_draw))
-
-    print(f"Run preprocessor")
-    for p in preprecessor:
-        p.start()
-    print(f"Run postprocessor")
-    for p in postprocessor:
-        p.start()
-    print(f"Run result collector")
-    collector.start()
+    collector = Pool(1)
+    collector.apply_async(func=output_result, args=(output_dir, ALL_LABEL, post_process_output_queue, cfg_draw))
     count = 0
     while True:
-        data = preprocess_queue.get()
+        data = preprogress_queue.get()
         if data:
             bboxes, labels = trt_infer.infer(data['image'])
-            postprocess_input_queue.put(dict(box=bboxes,
-                                             score=labels,
-                                             image_path=data['image_path'],
-                                             offset=data['offset'],
-                                             patch_num=data['patch_num']))
+            # print('111')
+            post_process_input_queue.put(dict(box=bboxes, score=labels, image_path=data['image_path'], offset=data['offset'], patch_num=data['patch_num']))
         else:
             count += 1
             if count == pre_processor_num:
                 break
-
-    postprocess_input_queue.put(None)
-    print(f"Stop preprocessor")
-    for p in preprecessor:
-        p.join()
-    print(f"Stop postprocessor")
-    for p in postprocessor:
-        p.join()
-    print(f"Stop result collector")
+    preprecess_pool.close()
+    preprecess_pool.join()
+    post_process_input_queue.put(None)
+    post_processor.close()
+    collector.close()
+    post_processor.join()
     collector.join()
     print("Done!")
-
 
 if __name__ == "__main__":
     import yaml
