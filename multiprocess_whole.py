@@ -8,6 +8,8 @@ from nms import multiclass_poly_nms_rbbox, multiclass_poly_nms_rbbox_patches
 from visualize import draw_result
 DEBUG = False
 
+def print_log(name, log):
+    print(f'{name}: size {log["shape"][0]}x{log["shape"][1]}, \tpatch {log["patch_num"]}, \tdet {log["det_num"]}, \ttime {log["time"]: .2f} Sec.')
 
 def generate_split_box(image_shape, split_size, gap):
     height, width = image_shape
@@ -65,6 +67,7 @@ def preprocess_data_unit(pipe, queue, normalization):
 
 def preprocess_data_imread(image_list,
                            pipes,
+                           result_log_recv,
                            lock: Lock,
                            split_cfg=dict(subsize=1024, gap=200)):
     t = 0
@@ -81,8 +84,11 @@ def preprocess_data_imread(image_list,
         lock.acquire()
         if i >= 1:
             basename = os.path.basename(image_list[i - 1])
+            log[basename]['det_num'] = result_log_recv.recv()
+            log[basename]['time'] = time.time() - t
             meta = log[basename]
-            print(f'{basename}: size {meta["shape"][0]}x{meta["shape"][1]}, patch {meta["patch_num"]}, time {time.time() - t: .2f} Sec.')
+            print_log(basename, meta)
+            # print(f'{basename}: size {meta["shape"][0]}x{meta["shape"][1]}, patch {meta["patch_num"]}, det {meta["det_num"]},time {time.time() - t: .2f} Sec.')
         t = time.time()
 
         for i, pipe in enumerate(pipes):
@@ -90,8 +96,10 @@ def preprocess_data_imread(image_list,
             pipe.send((img, per_boxes, image_meta))
     lock.acquire()
     basename = os.path.basename(image_list[-1])
+    log[basename]['det_num'] = result_log_recv.recv()
+    log[basename]['time'] = time.time() - t
     meta = log[basename]
-    print(f'{basename}: size {meta["shape"][0]}x{meta["shape"][1]}, patch {meta["patch_num"]}, time {time.time() - t: .2f} Sec.')
+    print_log(basename, meta)
     lock.release()
     for pipe in pipes:
         pipe.send(None)
@@ -99,6 +107,7 @@ def preprocess_data_imread(image_list,
 
 def preprocess_data(image_list,
                     data_queue: Queue,
+                    result_log_recv: Pipe,
                     num_processor,
                     lock: Lock,
                     normalization=dict(enable=True,
@@ -119,7 +128,7 @@ def preprocess_data(image_list,
         send, recv = Pipe()
         pipe_sends.append(send)
         pipe_recvs.append(recv)
-    p = Process(target=preprocess_data_imread, args=(image_list, pipe_sends, lock, split_cfg))
+    p = Process(target=preprocess_data_imread, args=(image_list, pipe_sends, result_log_recv, lock, split_cfg))
     process.append(p)
     for i in range(num_processor):
         p = Process(target=preprocess_data_unit, args=(pipe_recvs[i], data_queue, norm_cfg))
@@ -151,7 +160,7 @@ def postprocess_unit(input_queue: Queue, cache_queue: Queue, det_cfg):
             break
 
 
-def postprocess_collect(cache_queue: Queue, output_queue: Queue, lock: Lock, det_cfg, num_processor):
+def postprocess_collect(cache_queue: Queue, output_pipe: Pipe, log_pipe: Pipe, lock: Lock, det_cfg, num_processor):
     cache_box = []
     cache_label = []
     patch_count = 0
@@ -174,7 +183,8 @@ def postprocess_collect(cache_queue: Queue, output_queue: Queue, lock: Lock, det
                                                                   labels_,
                                                                   cache_data['class_num'],
                                                                   det_cfg['nms_threshold'])
-                output_queue.put(dict(rboxes=boxes, labels=labels, image_path=image_path))
+                output_pipe.send(dict(rboxes=boxes, labels=labels, image_path=image_path))
+                log_pipe.send(len(labels))
                 cache_box = []
                 cache_label = []
                 patch_count = 0
@@ -184,7 +194,7 @@ def postprocess_collect(cache_queue: Queue, output_queue: Queue, lock: Lock, det
         else:
             count += 1
             if count == num_processor:
-                output_queue.put(None)
+                output_pipe.send(None)
                 break
             else:
                 continue
@@ -192,7 +202,8 @@ def postprocess_collect(cache_queue: Queue, output_queue: Queue, lock: Lock, det
 
 def postprocess(num_processor,
                 input_queue: Queue,
-                output_queue: Queue,
+                output_pipe: Pipe,
+                log_pipe: Pipe,
                 cache_size: int,
                 lock: Lock,
                 det_cfg):
@@ -201,12 +212,12 @@ def postprocess(num_processor,
     for i in range(num_processor):
         p = Process(target=postprocess_unit, args=(input_queue, cache_queue, det_cfg))
         process.append(p)
-    p = Process(target=postprocess_collect, args=(cache_queue, output_queue, lock, det_cfg, num_processor))
+    p = Process(target=postprocess_collect, args=(cache_queue, output_pipe, log_pipe, lock, det_cfg, num_processor))
     process.append(p)
     return process
 
 
-def output_result(output_dir, ALL_LABEL, result_queue, draw_cfg=dict(enable=False, num=20)):
+def output_result(output_dir, ALL_LABEL, result_pipe, draw_cfg=dict(enable=False, num=20)):
     def make_dirs(folder):
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -222,7 +233,7 @@ def output_result(output_dir, ALL_LABEL, result_queue, draw_cfg=dict(enable=Fals
         assert draw_cfg['num'] > 0
         draw_limit = draw_cfg['num']
     while True:
-        result = result_queue.get()
+        result = result_pipe.recv()
         if result:
             det_str = ''
             box = result['rboxes']
