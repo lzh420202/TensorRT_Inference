@@ -68,6 +68,7 @@ def preprocess_data_imread(image_list,
                            lock: Lock,
                            split_cfg=dict(subsize=1024, gap=200)):
     t = 0
+    log = dict()
     for i, image in enumerate(image_list):
         img = cv2.imread(image, cv2.IMREAD_COLOR)
         cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
@@ -75,16 +76,23 @@ def preprocess_data_imread(image_list,
         boxes = generate_split_box((h, w), split_cfg['subsize'], split_cfg['gap'])
         per_list_num = math.ceil(len(boxes) / len(pipes))
         image_meta = dict(image_path=image, patch_size=split_cfg['subsize'], gap=split_cfg['gap'], patch_num=len(boxes))
+        log[os.path.basename(image)] = image_meta
+        log[os.path.basename(image)]['shape'] = (w, h)
         lock.acquire()
         if i >= 1:
             basename = os.path.basename(image_list[i - 1])
-            print(f'{basename}: size {h}x{w}, patch {len(boxes)}, time {time.time() - t: .2f} Sec.')
+            meta = log[basename]
+            print(f'{basename}: size {meta["shape"][0]}x{meta["shape"][1]}, patch {meta["patch_num"]}, time {time.time() - t: .2f} Sec.')
         t = time.time()
 
         for i, pipe in enumerate(pipes):
             per_boxes = boxes[i * per_list_num: (i + 1) * per_list_num]
             pipe.send((img, per_boxes, image_meta))
-
+    lock.acquire()
+    basename = os.path.basename(image_list[-1])
+    meta = log[basename]
+    print(f'{basename}: size {meta["shape"][0]}x{meta["shape"][1]}, patch {meta["patch_num"]}, time {time.time() - t: .2f} Sec.')
+    lock.release()
     for pipe in pipes:
         pipe.send(None)
 
