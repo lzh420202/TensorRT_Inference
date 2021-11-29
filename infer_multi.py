@@ -109,12 +109,12 @@ def main(cfg):
 if __name__ == "__main__":
     import yaml
     parser = argparse.ArgumentParser()
-    parser.add_argument("-f", "--config_file", default=None, help="The serialized TensorRT engine")
+    parser.add_argument("config_file", default=None, help="The serialized TensorRT engine")
     args = parser.parse_args()
 
     if not args.config_file:
         parser.print_help()
-        print("\nThese arguments are required: -f")
+        print("\nThese arguments are required: config file")
         sys.exit(1)
     file = args.config_file
     with open(file, 'r') as f:

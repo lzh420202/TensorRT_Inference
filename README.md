@@ -34,9 +34,9 @@ pip install -r requirements.txt
 We define configure file (yaml) to replace plenty of args.
 ```shell
 # Small pictures inference mode
-python infer_multi.py -f fcosr_tiny_nx.yaml
+python infer_multi.py fcosr_tiny_nx.yaml
 # Big whole picture inference mode
-python infer_whole_pool.py -f fcosr_tiny_agx_whole.yaml
+python infer_whole.py fcosr_tiny_agx_whole.yaml
 ```
 
 A configure file demo is:
