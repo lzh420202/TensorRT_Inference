@@ -35,9 +35,9 @@ def print_cfg(cfg):
     print(f'{"-"*10 + " configure " + "-"*10}')
 
     if cfg['whole_mode']:
-        print(f"Whole mode: True")
+        print(f"Whole mode: Enable")
     else:
-        print(f"Whole mode: False")
+        print(f"Whole mode: Disable")
     print(f"Model file: {cfg['model']['engine_file']}")
     if cfg['model']['labels']:
         ALL_LABEL = parse_label_file(cfg['model']['labels'])
@@ -50,11 +50,11 @@ def print_cfg(cfg):
     print(f"Preprocessor queue: {cfg_preprocess['queue_length']}")
     cfg_norm = cfg_preprocess['normalization']
     if cfg_norm['enable']:
-        print("Normalization: True")
+        print("Normalization: Enable")
         print(f"Normalization mean: [{', '.join([str(m) for m in cfg_norm['mean']])}]")
         print(f"Normalization std: [{', '.join([str(s) for s in cfg_norm['std']])}]")
     else:
-        print("Normalization: False")
+        print("Normalization: Disable")
     if cfg['whole_mode']:
         cfg_split = cfg_preprocess['split']
         print(f"Split size: {cfg_split['subsize']}")
@@ -66,10 +66,10 @@ def print_cfg(cfg):
     print(f"Postprocess nms threshold: {cfg_postprocess['nms_threshold']}")
     print(f"Single picture max detection number: {cfg_postprocess['max_det_num']}")
     if cfg_postprocess['draw_image']['enable']:
-        print("Draw result: True")
+        print("Draw result: Enable")
         print(f"Draw number: {cfg_postprocess['draw_image']['num']}")
     else:
-        print("Draw result: False")
+        print("Draw result: Disable")
     print(f'{"-" * 31}')
 
 

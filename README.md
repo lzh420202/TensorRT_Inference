@@ -12,6 +12,9 @@ The inference framework is shown bellow.
 Detection result
 ![detection](result/P2043_det.jpg)
 
+Log
+![framework](source/console.png)
+
 ## Recommend system environments:
  - Jetson Xavier NX / Jetson AGX Xavier
  - python 3.6

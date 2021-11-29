@@ -1,9 +1,9 @@
 whole_mode: 1
 model:
-  engine_file: "/home/nvidia/Desktop/FCOSR/model/fcosr_tiny_agx_16.trt"
+  engine_file: "/home/nvidia/Desktop/FCOSR/model/fcosr_tiny_nx_16.trt"
   labels: 'labels.txt'
 io:
-  input_dir: '/data/'
+  input_dir: '/data/Big_picture'
   output_dir: 'result'
 preprocess:
   num_process: 4
@@ -22,11 +22,11 @@ preprocess:
     subsize: 1024
     gap: 200
 postprocess:
-  num_process: 4
+  num_process: 6
   queue_length: 48
   nms_threshold: 0.1
   score_threshold: 0.3
   max_det_num: 2000
   draw_image:
-    enable: 1
+    enable: 0
     num: 'all'
