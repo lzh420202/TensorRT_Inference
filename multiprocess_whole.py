@@ -8,8 +8,10 @@ from nms import multiclass_poly_nms_rbbox, multiclass_poly_nms_rbbox_patches
 from visualize import draw_result
 DEBUG = False
 
+
 def print_log(name, log):
     print(f'{name}: size {log["shape"][0]} x {log["shape"][1]}, \tpatch {log["patch_num"]}, \tdet {log["det_num"]}, \ttime {log["time"]: .2f} Sec.')
+
 
 def generate_split_box(image_shape, split_size, gap):
     height, width = image_shape
@@ -88,7 +90,6 @@ def preprocess_data_imread(image_list,
             log[basename]['time'] = time.time() - t
             meta = log[basename]
             print_log(basename, meta)
-            # print(f'{basename}: size {meta["shape"][0]}x{meta["shape"][1]}, patch {meta["patch_num"]}, det {meta["det_num"]},time {time.time() - t: .2f} Sec.')
         t = time.time()
 
         for i, pipe in enumerate(pipes):
@@ -125,7 +126,7 @@ def preprocess_data(image_list,
     pipe_sends = []
     pipe_recvs = []
     for i in range(num_processor):
-        send, recv = Pipe()
+        recv, send = Pipe(duplex=False)
         pipe_sends.append(send)
         pipe_recvs.append(recv)
     p = Process(target=preprocess_data_imread, args=(image_list, pipe_sends, result_log_recv, lock, split_cfg))

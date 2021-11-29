@@ -6,9 +6,11 @@
 
 This implement is modified from [TensorRT/efficientdet](https://github.com/NVIDIA/TensorRT/tree/main/samples/python/efficientdet). 
 
+The inference framework is shown bellow.
+![framework](source/inference.png)
 
-![detection](result/P0006__1__0___0.png)
-![detection](result/P0017__1__0___0.png)
+Detection result
+![detection](result/P2043_det.jpg)
 
 ## Recommend system environments:
  - Jetson Xavier NX / Jetson AGX Xavier

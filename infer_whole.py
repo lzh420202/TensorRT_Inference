@@ -102,13 +102,13 @@ def main(cfg):
     images.sort()
     print(f"Scan input folder \"{cfg_io['input_dir']}\", include {len(images)} images.")
 
-    result_log_send, result_log_recv = Pipe()
+    result_log_recv, result_log_send = Pipe(duplex=False)
     print(f"Create preprocessor")
     preprecessor = preprocess_data(images, preprocess_queue, result_log_recv, preprocessor_num, lock, normalization, split_cfg)
     postprocessor_num = cfg_postprocess['num_process']
 
     postprocess_input_queue = Queue(cfg_postprocess['queue_length'])
-    postprocess_output_send, postprocess_output_recv = Pipe()
+    postprocess_output_recv, postprocess_output_send = Pipe(duplex=False)
     det_cfg = dict(score_threshold=cfg_postprocess['score_threshold'],
                    nms_threshold=cfg_postprocess['nms_threshold'],
                    max_det_num=cfg_postprocess['max_det_num'])
