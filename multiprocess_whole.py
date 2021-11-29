@@ -9,7 +9,7 @@ from visualize import draw_result
 DEBUG = False
 
 def print_log(name, log):
-    print(f'{name}: size {log["shape"][0]}x{log["shape"][1]}, \tpatch {log["patch_num"]}, \tdet {log["det_num"]}, \ttime {log["time"]: .2f} Sec.')
+    print(f'{name}: size {log["shape"][0]} x {log["shape"][1]}, \tpatch {log["patch_num"]}, \tdet {log["det_num"]}, \ttime {log["time"]: .2f} Sec.')
 
 def generate_split_box(image_shape, split_size, gap):
     height, width = image_shape
