@@ -123,7 +123,7 @@ def main(cfg):
     cfg_draw = cfg_postprocess['draw_image']
     cfg_draw = dict(enable=bool(cfg_draw['enable']), num=cfg_draw['num'])
     print(f"Create result collector")
-    collector = Process(target=output_result, args=(output_dir, ALL_LABEL, postprocess_output_recv, cfg_draw))
+    output_processor = Process(target=output_result, args=(output_dir, ALL_LABEL, postprocess_output_recv, cfg_draw))
 
     print(f"Run preprocessor")
     for p in preprecessor:
@@ -132,7 +132,7 @@ def main(cfg):
     for p in postprocessor:
         p.start()
     print(f"Run result collector")
-    collector.start()
+    output_processor.start()
     count = 0
     while True:
         data = preprocess_queue.get()
@@ -156,7 +156,7 @@ def main(cfg):
     for p in postprocessor:
         p.join()
     print(f"Stop result collector")
-    collector.join()
+    output_processor.join()
     print("Done!")
 
 
