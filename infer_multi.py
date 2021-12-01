@@ -118,5 +118,5 @@ if __name__ == "__main__":
         sys.exit(1)
     file = args.config_file
     with open(file, 'r') as f:
-        cfg = yaml.load(f)
+        cfg = yaml.safe_load(f)
     main(cfg)
