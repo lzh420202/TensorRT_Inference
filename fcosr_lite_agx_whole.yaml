@@ -1,6 +1,6 @@
 whole_mode: 1
 model:
-  engine_file: "/home/nvidia/Desktop/FCOSR/model/fcosr_tiny_agx_16.trt"
+  engine_file: "/home/nvidia/Desktop/FCOSR/model/fcosr_lite_agx_16.trt"
   labels: 'labels.txt'
 io:
   input_dir: '/data/Big_images/'
