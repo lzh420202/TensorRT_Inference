@@ -79,9 +79,9 @@ Dota1.0 test set
 We define configure file (yaml) to replace plenty of args.
 ```shell
 # Small pictures inference mode
-python infer_multi.py fcosr_tiny_nx.yaml
+python infer_multi.py config/fcosr_tiny_nx.yaml
 # Big whole picture inference mode
-python infer_whole.py fcosr_tiny_agx_whole.yaml
+python infer_whole.py config/fcosr_tiny_agx_whole.yaml
 ```
 
 A configure file demo is:
