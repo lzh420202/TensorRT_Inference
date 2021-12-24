@@ -3,8 +3,9 @@ import numpy as np
 import cv2
 import os
 import math
-from nms import multiclass_poly_nms_rbbox
-from visualize import draw_result
+from utils.nms import multiclass_poly_nms_rbbox
+from utils.visualize import draw_result
+
 
 def preprogress_data_unit(image_list, queue, normalization, mean, stdinv):
     for image_path in image_list:

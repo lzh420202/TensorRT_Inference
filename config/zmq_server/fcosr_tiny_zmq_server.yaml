@@ -1,10 +1,8 @@
-whole_mode: 1
+mode: 'server'
+port: 10000
 model:
-  engine_file: "/home/nvidia/Desktop/FCOSR/model/fcosr_lite_agx_16.trt"
+  engine_file: "/home/nvidia/Desktop/FCOSR/model/fcosr_tiny_agx_16.trt"
   labels: 'labels.txt'
-io:
-  input_dir: '/data/Big_images/'
-  output_dir: 'result'
 preprocess:
   num_process: 2
   queue_length: 48
@@ -27,6 +25,3 @@ postprocess:
   nms_threshold: 0.1
   score_threshold: 0.3
   max_det_num: 2000
-  draw_image:
-    enable: 0
-    num: 'all'

@@ -1,13 +1,12 @@
-whole_mode: 0
+mode: 'whole'
 model:
   engine_file: "/home/nvidia/Desktop/FCOSR/model/fcosr_tiny_agx_16.trt"
   labels: 'labels.txt'
-  num_speed: 2000
 io:
-  input_dir: '/data/cache/'
+  input_dir: '/data/Big_images/'
   output_dir: 'result'
 preprocess:
-  num_process: 8
+  num_process: 2
   queue_length: 48
   normalization:
     enable: 1
@@ -23,12 +22,11 @@ preprocess:
     subsize: 1024
     gap: 200
 postprocess:
-  num_process: 8
+  num_process: 4
   queue_length: 48
   nms_threshold: 0.1
   score_threshold: 0.3
   max_det_num: 2000
   draw_image:
-    enable: 1
-    output_dir: 'result'
+    enable: 0
     num: 'all'

@@ -16,23 +16,26 @@
 import os
 import sys
 import argparse
+import time
+
 from model_inference import TensorRTInfer
 from multiprocessing import (Queue, Process, Lock, Pipe)
-from multiprocess_whole import (preprocess_data, postprocess, output_result)
+from multiprocess_server import (preprocess_data, postprocess, output_result)
 
 from utils.tools import (parse_label_file, is_image, print_cfg)
+from zmq_wrappers import custom_server
 
 
 def main(cfg):
-    assert cfg['mode'].lower() == 'whole'
+    assert cfg['mode'].lower() == 'server'
     lock = Lock()
-    cfg_io = cfg['io']
+    # cfg_io = cfg['io']
     cfg_model = cfg['model']
     cfg_preprocess = cfg['preprocess']
     cfg_postprocess = cfg['postprocess']
 
-    output_dir = os.path.realpath(cfg_io['output_dir'])
-    os.makedirs(output_dir, exist_ok=True)
+    # output_dir = os.path.realpath(cfg_io['output_dir'])
+    # os.makedirs(output_dir, exist_ok=True)
     ALL_LABEL = []
     if cfg_model['labels']:
         ALL_LABEL = parse_label_file(cfg_model['labels'])
@@ -48,13 +51,19 @@ def main(cfg):
                          std=cfg_norm['std'])
     split_cfg = cfg_preprocess['split']
 
-    images = [os.path.join(cfg_io['input_dir'], f) for f in os.listdir(cfg_io['input_dir']) if is_image(os.path.join(cfg_io['input_dir'], f))]
-    images.sort()
-    print(f"Scan input folder \"{cfg_io['input_dir']}\", include {len(images)} images.")
+    # images = [os.path.join(cfg_io['input_dir'], f) for f in os.listdir(cfg_io['input_dir']) if is_image(os.path.join(cfg_io['input_dir'], f))]
+    # images.sort()
+    # print(f"Scan input folder \"{cfg_io['input_dir']}\", include {len(images)} images.")
+
+    zmq_data_queue = Queue(10)
+    zmq_progressbar_queue = Queue(20)
+    zmq_result_queue = Queue(10)
+
+    server = custom_server(int(cfg['port']), zmq_data_queue, zmq_result_queue, zmq_progressbar_queue, True)
 
     result_log_recv, result_log_send = Pipe(duplex=False)
     print(f"Create preprocessor")
-    preprecessor = preprocess_data(images, preprocess_queue, result_log_recv, preprocessor_num, lock, normalization, split_cfg)
+    preprecessor = preprocess_data(zmq_data_queue, preprocess_queue, result_log_recv, preprocessor_num, lock, normalization, split_cfg)
     postprocessor_num = cfg_postprocess['num_process']
 
     postprocess_input_queue = Queue(cfg_postprocess['queue_length'])
@@ -70,10 +79,8 @@ def main(cfg):
                                 cfg_postprocess['queue_length'],
                                 lock,
                                 det_cfg)
-    cfg_draw = cfg_postprocess['draw_image']
-    cfg_draw = dict(enable=bool(cfg_draw['enable']), num=cfg_draw['num'])
     print(f"Create result collector")
-    output_processor = Process(target=output_result, args=(output_dir, ALL_LABEL, postprocess_output_recv, cfg_draw))
+    output_processor = Process(target=output_result, args=(zmq_result_queue, ALL_LABEL, postprocess_output_recv))
 
     print(f"Run preprocessor")
     for p in preprecessor:
@@ -84,15 +91,29 @@ def main(cfg):
     print(f"Run result collector")
     output_processor.start()
     count = 0
+    current = 0
     while True:
         data = preprocess_queue.get()
         if data:
             bboxes, labels = trt_infer.infer(data['image'])
+            current += 1
             postprocess_input_queue.put(dict(box=bboxes,
                                              score=labels,
                                              image_path=data['image_path'],
                                              offset=data['offset'],
                                              patch_num=data['patch_num']))
+            start_time = data['start_time']
+            progressbar = dict(type='detect',
+                               current=current,
+                               total=data['patch_num'],
+                               used_time=time.time()-start_time,
+                               description='detection task')
+            if current == data['patch_num']:
+                progressbar.update(dict(done=True, run=True))
+                current = 0
+            else:
+                progressbar.update(dict(done=False, run=True))
+            zmq_progressbar_queue.put(progressbar)
         else:
             count += 1
             if count == preprocessor_num:

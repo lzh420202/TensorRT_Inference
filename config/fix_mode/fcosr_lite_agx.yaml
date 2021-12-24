@@ -1,12 +1,12 @@
-whole_mode: 1
+mode: 'fix'
 model:
-  engine_file: "/home/nvidia/Desktop/FCOSR/model/fcosr_tiny_nx_16.trt"
+  engine_file: "/home/nvidia/Desktop/FCOSR/model/fcosr_lite_agx_16.trt"
   labels: 'labels.txt'
 io:
-  input_dir: '/data'
+  input_dir: '/data/DOTA_TEST/images/'
   output_dir: 'result'
 preprocess:
-  num_process: 2
+  num_process: 8
   queue_length: 48
   normalization:
     enable: 1
@@ -18,15 +18,12 @@ preprocess:
       - 58.395
       - 57.12
       - 57.375
-  split:
-    subsize: 1024
-    gap: 200
 postprocess:
-  num_process: 4
+  num_process: 8
   queue_length: 48
   nms_threshold: 0.1
-  score_threshold: 0.3
+  score_threshold: 0.1
   max_det_num: 2000
   draw_image:
     enable: 0
-    num: 'all'
+    num: 20

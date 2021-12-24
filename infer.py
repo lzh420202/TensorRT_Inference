@@ -17,23 +17,16 @@
 import os
 import sys
 import time
-import ctypes
 import argparse
 import numpy as np
 import tensorrt as trt
 
 import pycuda.driver as cuda
-import pycuda.autoinit
 
 from image_batcher import ImageBatcher
-from nms import multiclass_poly_nms_rbbox
+from utils.nms import multiclass_poly_nms_rbbox
 # from visualize import visualize_detections
-from visualize import draw_result
-import cv2
 from tqdm import tqdm
-from DOTA_devkit.ResultMerge_multi_process import mergebypoly as mergebypoly_multi_process
-import shutil
-from multiprocessing import (Process, Queue)
 
 # dota_10 = ['plane', 'baseball-diamond', 'bridge', 'ground-track-field', 'small-vehicle', 'large-vehicle', 'ship',
 #            'tennis-court', 'basketball-court', 'storage-tank',  'soccer-ball-field', 'roundabout', 'harbor',

@@ -14,7 +14,7 @@ def preprocess_data_unit(pipe, queue, normalization):
     while True:
         data = pipe.recv()
         if data:
-            src_image, boxes, meta = data
+            src_image, boxes, meta, start_time = data
             for box in boxes:
                 image = src_image[box[0]:box[1], box[2]:box[3], :].copy()
                 h, w, _ = image.shape
@@ -35,52 +35,46 @@ def preprocess_data_unit(pipe, queue, normalization):
                 queue.put(dict(image=image,
                                image_path=meta['image_path'],
                                offset=(box[2], box[0]),
-                               patch_num=meta['patch_num']))
+                               patch_num=meta['patch_num'],
+                               start_time=start_time))
         else:
             queue.put(None)
             break
 
 
-def preprocess_data_imread(image_list,
-                           pipes,
-                           result_log_recv,
-                           lock: Lock,
-                           split_cfg=dict(subsize=1024, gap=200)):
-    t = 0
+def preprocess_data_zmq(image_queue,
+                        pipes,
+                        result_log_recv,
+                        lock: Lock,
+                        split_cfg=dict(subsize=1024, gap=200)):
     log = dict()
-    for i, image in enumerate(image_list):
-        img = cv2.imread(image, cv2.IMREAD_COLOR)
-        cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
-        h, w, _ = img.shape
-        boxes = generate_split_box((h, w), split_cfg['subsize'], split_cfg['gap'])
-        per_list_num = math.ceil(len(boxes) / len(pipes))
-        image_meta = dict(image_path=image, patch_size=split_cfg['subsize'], gap=split_cfg['gap'], patch_num=len(boxes))
-        log[os.path.basename(image)] = image_meta
-        log[os.path.basename(image)]['shape'] = (w, h)
+    while True:
         lock.acquire()
-        if i >= 1:
-            basename = os.path.basename(image_list[i - 1])
-            log[basename]['det_num'] = result_log_recv.recv()
-            log[basename]['time'] = time.time() - t
-            meta = log[basename]
-            print_log(basename, meta)
-        t = time.time()
+        data = image_queue.get()
+        if data:
+            t = time.time()
+            img = cv2.cvtColor(data['image'], cv2.COLOR_BGR2RGB)
+            h, w, _ = img.shape
+            boxes = generate_split_box((h, w), split_cfg['subsize'], split_cfg['gap'])
+            per_list_num = math.ceil(len(boxes) / len(pipes))
+            image_meta = dict(image_path=data['name'], patch_size=split_cfg['subsize'], gap=split_cfg['gap'], patch_num=len(boxes))
 
-        for i, pipe in enumerate(pipes):
-            per_boxes = boxes[i * per_list_num: (i + 1) * per_list_num]
-            pipe.send((img, per_boxes, image_meta))
-    lock.acquire()
-    basename = os.path.basename(image_list[-1])
-    log[basename]['det_num'] = result_log_recv.recv()
-    log[basename]['time'] = time.time() - t
-    meta = log[basename]
-    print_log(basename, meta)
-    lock.release()
+            for i, pipe in enumerate(pipes):
+                per_boxes = boxes[i * per_list_num: (i + 1) * per_list_num]
+                pipe.send((img, per_boxes, image_meta, t))
+            log[data['name']] = image_meta
+            log[data['name']]['shape'] = (w, h)
+            log[data['name']]['det_num'] = result_log_recv.recv()
+            log[data['name']]['time'] = time.time() - t
+            meta = log[data['name']]
+            print_log(data['name'], meta)
+        else:
+            break
     for pipe in pipes:
         pipe.send(None)
 
 
-def preprocess_data(image_list,
+def preprocess_data(image_queue,
                     data_queue: Queue,
                     result_log_recv: Pipe,
                     num_processor,
@@ -103,7 +97,7 @@ def preprocess_data(image_list,
         recv, send = Pipe(duplex=False)
         pipe_sends.append(send)
         pipe_recvs.append(recv)
-    p = Process(target=preprocess_data_imread, args=(image_list, pipe_sends, result_log_recv, lock, split_cfg))
+    p = Process(target=preprocess_data_zmq, args=(image_queue, pipe_sends, result_log_recv, lock, split_cfg))
     process.append(p)
     for i in range(num_processor):
         p = Process(target=preprocess_data_unit, args=(pipe_recvs[i], data_queue, norm_cfg))
@@ -192,40 +186,20 @@ def postprocess(num_processor,
     return process
 
 
-def output_result(output_dir, ALL_LABEL, result_pipe, draw_cfg=dict(enable=False, num=20)):
-    def make_dirs(folder):
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-    detection_result_folder = os.path.join(output_dir, 'detection')
-    visualization_folder = os.path.join(output_dir, 'visualization')
-    make_dirs(detection_result_folder)
-    make_dirs(visualization_folder)
-    draw_count = 0
-    if draw_cfg['num'] == 'all':
-        draw_limit = 1e9
-    else:
-        assert isinstance(draw_cfg['num'], int)
-        assert draw_cfg['num'] > 0
-        draw_limit = draw_cfg['num']
+def output_result(zmq_result_queue, ALL_LABEL, result_pipe):
     while True:
         result = result_pipe.recv()
         if result:
-            det_str = ''
+            # det_str = ''
             box = result['rboxes']
             label = result['labels']
-            image_path = result['image_path']
-            basename = os.path.splitext(os.path.basename(image_path))[0]
-            for j, label_ in enumerate(label):
-                name = ALL_LABEL[label_]
-                box_str = [f'{value: .3f}' for value in box[j, :-1].tolist()]
-                box_str_ = ' '.join(box_str)
-                det_str += f'{name} {box[j, -1]: .3f} {box_str_}\n'
-            with open(os.path.join(detection_result_folder, basename + '.txt'), 'w') as f:
-                f.write(det_str)
-            if draw_cfg['enable'] and draw_count < draw_limit:
-                image = draw_result(box, label, cv2.imread(image_path))
-                output_path = os.path.join(visualization_folder, "{}_det.jpg".format(basename))
-                cv2.imwrite(output_path, image)
-                draw_count += 1
+            # image_path = result['image_path']
+
+            objs = [dict(label=ALL_LABEL[label_], box=box[j, :-1].tolist(), confidence=box[j, -1]) for j, label_ in enumerate(label)]
+            zmq_result_queue.put(dict(image=result['image_path'], objects=objs))
+            # objs = []
+            # for j, label_ in enumerate(label):
+            #     name = ALL_LABEL[label_]
+            #     objs.append(dict(label=name, box=box[j, :-1].tolist(), confidence=box[j, -1]))
         else:
             break

@@ -26,24 +26,24 @@ from tqdm import tqdm
 import shutil
 import copy
 
-
-def parse_label_file(file):
-    with open(file, 'r') as f:
-        labels = [line.strip() for line in f.readlines() if len(line.strip()) > 0]
-    return labels
+from utils.tools import parse_label_file
 
 
-def main(cfg):
-    assert cfg['whole_mode'] == 0
+def main(cfg, speed_num):
+    assert cfg['mode'].lower() == 'fix'
     cfg_io = cfg['io']
     cfg_model = cfg['model']
     cfg_preprocess = cfg['preprocess']
     cfg_postprocess = cfg['postprocess']
 
-    speed_n = cfg_model['num_speed']
+    speed_n = speed_num
 
     output_dir = os.path.realpath(cfg_io['output_dir'])
+    result_dir = os.path.join(output_dir, 'result')
+    visualization_dir = os.path.join(output_dir, 'visualization')
     os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(result_dir, exist_ok=True)
+    os.makedirs(visualization_dir, exist_ok=True)
     ALL_LABEL = []
     if cfg_model['labels']:
         ALL_LABEL = parse_label_file(cfg_model['labels'])
@@ -66,13 +66,13 @@ def main(cfg):
                                   cfg_postprocess['score_threshold'],
                                   cfg_postprocess['nms_threshold'],
                                   cfg_postprocess['max_det_num'])
-    cache_dir = os.path.join(output_dir, 'cache')
+    cache_dir = os.path.join(result_dir, 'cache')
     cfg_draw = cfg_postprocess['draw_image']
     collector = Process(target=collect_result, args=(cache_dir,
                                                      ALL_LABEL,
                                                      result_queue,
                                                      dict(enable=bool(cfg_draw['enable']),
-                                                          output_dir=cfg_draw['output_dir'],
+                                                          output_dir=visualization_dir,
                                                           num=cfg_draw['num'])))
     collector.start()
     t = time.time()
@@ -110,6 +110,7 @@ if __name__ == "__main__":
     import yaml
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file", default=None, help="The serialized TensorRT engine")
+    parser.add_argument("speed_num", default=2000, type=int, help="The count of images when test avg. FPS.")
     args = parser.parse_args()
 
     if not args.config_file:
@@ -117,6 +118,7 @@ if __name__ == "__main__":
         print("\nThese arguments are required: config file")
         sys.exit(1)
     file = args.config_file
+    speed_num = args.speed_num
     with open(file, 'r') as f:
         cfg = yaml.safe_load(f)
-    main(cfg)
+    main(cfg, speed_num)
