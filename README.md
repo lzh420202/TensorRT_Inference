@@ -90,7 +90,8 @@ python infer_zmq_server.py config/zmq_server/fcosr_tiny_zmq_server.yaml
 # client
 python infer_zmq_client.py
 ```
-A client running demo.
+A client running demo.([video file](source/infer_zmq_client.py-2021-12-24--21-54-27.mp4))
+
 
 <video id="video" controls="" width="800"  height="600">
 <source id="mp4" src="source/infer_zmq_client.py-2021-12-24--21-54-27.mp4" type="video/mp4">
