@@ -23,6 +23,7 @@ Log
  - cuDNN 8.2.1 (from JetPack)
  - OpenCV 4.1.1 (from JetPack)
  - TensorRT 8.0.1.6 (from JetPack)
+ - libzmq
 
 ## Install
 

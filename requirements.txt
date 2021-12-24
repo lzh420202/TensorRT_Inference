@@ -2,3 +2,4 @@ numpy
 pycuda
 shapely
 tqdm
+pyzmq
