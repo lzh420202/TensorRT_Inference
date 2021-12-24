@@ -20,22 +20,19 @@ import time
 
 from model_inference import TensorRTInfer
 from multiprocessing import (Queue, Process, Lock, Pipe)
-from multiprocess_server import (preprocess_data, postprocess, output_result)
+from process.multiprocess_server import (preprocess_data, postprocess, output_result)
 
-from utils.tools import (parse_label_file, is_image, print_cfg)
+from utils.tools import (parse_label_file, print_cfg)
 from zmq_wrappers import custom_server
 
 
 def main(cfg):
     assert cfg['mode'].lower() == 'server'
     lock = Lock()
-    # cfg_io = cfg['io']
     cfg_model = cfg['model']
     cfg_preprocess = cfg['preprocess']
     cfg_postprocess = cfg['postprocess']
 
-    # output_dir = os.path.realpath(cfg_io['output_dir'])
-    # os.makedirs(output_dir, exist_ok=True)
     ALL_LABEL = []
     if cfg_model['labels']:
         ALL_LABEL = parse_label_file(cfg_model['labels'])
@@ -50,10 +47,6 @@ def main(cfg):
                          mean=cfg_norm['mean'],
                          std=cfg_norm['std'])
     split_cfg = cfg_preprocess['split']
-
-    # images = [os.path.join(cfg_io['input_dir'], f) for f in os.listdir(cfg_io['input_dir']) if is_image(os.path.join(cfg_io['input_dir'], f))]
-    # images.sort()
-    # print(f"Scan input folder \"{cfg_io['input_dir']}\", include {len(images)} images.")
 
     zmq_data_queue = Queue(10)
     zmq_progressbar_queue = Queue(20)
@@ -97,12 +90,13 @@ def main(cfg):
         if data:
             bboxes, labels = trt_infer.infer(data['image'])
             current += 1
+            start_time = data['start_time']
             postprocess_input_queue.put(dict(box=bboxes,
                                              score=labels,
                                              image_path=data['image_path'],
                                              offset=data['offset'],
-                                             patch_num=data['patch_num']))
-            start_time = data['start_time']
+                                             patch_num=data['patch_num'],
+                                             start_time=start_time))
             progressbar = dict(type='detect',
                                current=current,
                                total=data['patch_num'],

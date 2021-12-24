@@ -19,7 +19,7 @@ import time
 import argparse
 from model_inference import TensorRTInfer
 from multiprocessing import (Process, Queue)
-from multiprocess_m import (preprogress_data, post_process, collect_result)
+from process.multiprocess_m import (preprogress_data, post_process, collect_result)
 from DOTA_devkit.ResultMerge_multi_process import mergebypoly as mergebypoly_multi_process
 
 from tqdm import tqdm

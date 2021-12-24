@@ -79,19 +79,32 @@ Dota1.0 test set
 We define configure file (yaml) to replace plenty of args.
 ```shell
 # Small pictures inference mode
-python infer_multi.py config/fcosr_tiny_nx.yaml
+python infer_multi.py config/fix_mode/fcosr_tiny_nx.yaml
 # Big whole picture inference mode
-python infer_whole.py config/fcosr_tiny_agx_whole.yaml
+python infer_whole.py config/whole_mode/fcosr_tiny_agx_whole.yaml
 ```
+server mode
+```shell
+# server
+python infer_zmq_server.py config/zmq_server/fcosr_tiny_zmq_server.yaml
+# client
+python infer_zmq_client.py
+```
+A client running demo.
+
+<video id="video" controls="" width="800"  height="600">
+<source id="mp4" src="source/infer_zmq_client.py-2021-12-24--21-54-27.mp4" type="video/mp4">
+</video>
 
 A configure file demo is:
 ```yaml
-whole_mode: 1  # whole mode switch
+mode: 1  # support mode: fix, whole, server
+port: 10000 # only server mode support this attribution
 model:
   engine_file: '/home/nvidia/Desktop/FCOSR/model/epoch_36_16_lite_nx.trt' # TensorRT engine file path
   labels: 'labels.txt' # calss name
   num_speed: 2000 # FPS compute
-io:
+io: # only support whole/fix mode.
   input_dir: '/home/nvidia/DOTA_TEST/images/' # image folder path
   output_dir: 'result' # output
 preprocess: # preprocess configure
@@ -107,7 +120,7 @@ preprocess: # preprocess configure
       - 58.395
       - 57.12
       - 57.375
-  split:    # split configure, only support whole mode.
+  split:    # split configure, only support whole/server mode.
     subsize: 1024
     gap: 200
 postprocess: # postprocess configure
@@ -116,8 +129,15 @@ postprocess: # postprocess configure
   nms_threshold: 0.1 # poly nms threshold 
   score_threshold: 0.1 # poly nms score threshold
   max_det_num: 2000
-  draw_image: # visualization configure
+  draw_image: # visualization configure, only support whole/fix mode.
     enable: 0 # switch
-    output_dir: 'result' # output
     num: 20 # number
 ```
+
+## Run Mode
+
+|Mode|Specified Attributions|Ignored Attributions|Description|
+|-|-|-|-|
+|fix|io, draw_image|split, port|progress fix size image|
+|whole|io, draw_image, split|port|progress a big image|
+|server|port, split|io, draw_image|use zeromq to get image, then progress it like whole mode|

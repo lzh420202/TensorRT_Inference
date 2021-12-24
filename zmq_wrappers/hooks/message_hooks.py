@@ -181,7 +181,7 @@ def sendMultipartDataComplexHooks(socket: zmq.Socket, message: dict, progress_ba
                                           current=0,
                                           total=total,
                                           used_time=0,
-                                          description='network transfer bar',
+                                          description='network transfer',
                                           done=False,
                                           run=False))
         t = time.time()

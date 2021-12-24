@@ -1,4 +1,7 @@
 from queue import Queue
+
+import numpy
+
 from ..wrappers.zmq_client_wrappers import zmq_multipart_data_client, zmq_multipart_data_complex_client, monitorThread
 from ..hooks.client_function import draw_zmq_result
 
@@ -24,8 +27,12 @@ class custom_client():
     def testServer(self):
         self.input_queue.put(dict(TEST=True))
 
-    def draw_result(self, image):
+    def visualize_result(self, image: numpy.ndarray):
         result = self.output_queue.get()
+        print(f'Image: {result["image"]}')
+        print(f'Shape: {image.shape}')
+        print(f'Detections: {len(result["objects"])}')
+        print(f'Used time: {result["used_time"]: .2f}s')
         img = draw_zmq_result(image, result['objects'])
         return img
 

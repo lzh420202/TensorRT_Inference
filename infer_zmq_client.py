@@ -23,12 +23,12 @@ if __name__ == "__main__":
     infer_client = custom_client('192.168.2.38', 10000, True)
     image = cv2.imread(r'F:\BaiduNetdiskDownload\test\BIG\P0031.png')
     infer_client.sendData(dict(image=image, name='P0031.png'))
-    result = infer_client.draw_result(image)
+    result = infer_client.visualize_result(image)
     cv2.imwrite(os.path.join(save_dirs, 'P0031.png'), result)
 
-    image = cv2.imread(r'F:\BaiduNetdiskDownload\test\BIG\P0112.png')
-    infer_client.sendData(dict(image=image, name='P0112.png'))
-    result = infer_client.draw_result(image)
-    cv2.imwrite(os.path.join(save_dirs, 'P0112.png'), result)
+    # image = cv2.imread(r'F:\BaiduNetdiskDownload\test\BIG\P0112.png')
+    # infer_client.sendData(dict(image=image, name='P0112.png'))
+    # result = infer_client.visualize_result(image)
+    # cv2.imwrite(os.path.join(save_dirs, 'P0112.png'), result)
 
 

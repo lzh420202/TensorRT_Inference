@@ -18,7 +18,7 @@ import sys
 import argparse
 from model_inference import TensorRTInfer
 from multiprocessing import (Queue, Process, Lock, Pipe)
-from multiprocess_whole import (preprocess_data, postprocess, output_result)
+from process.multiprocess_whole import (preprocess_data, postprocess, output_result)
 
 from utils.tools import (parse_label_file, is_image, print_cfg)
 

@@ -5,7 +5,6 @@ import os
 import math
 import time
 from utils.nms import multiclass_poly_nms_rbbox, multiclass_poly_nms_rbbox_patches
-from utils.visualize import draw_result
 from utils.tools import (print_log, generate_split_box)
 DEBUG = False
 
@@ -50,25 +49,31 @@ def preprocess_data_zmq(image_queue,
     log = dict()
     while True:
         lock.acquire()
+        print('Waiting for data.')
         data = image_queue.get()
         if data:
+            print(f'Get image data. Name: {data["name"]}')
+            print(f"Image Shape: {data['image'].shape}")
             t = time.time()
             img = cv2.cvtColor(data['image'], cv2.COLOR_BGR2RGB)
             h, w, _ = img.shape
             boxes = generate_split_box((h, w), split_cfg['subsize'], split_cfg['gap'])
+            print(f"Patches: {len(boxes)}")
             per_list_num = math.ceil(len(boxes) / len(pipes))
             image_meta = dict(image_path=data['name'], patch_size=split_cfg['subsize'], gap=split_cfg['gap'], patch_num=len(boxes))
 
             for i, pipe in enumerate(pipes):
                 per_boxes = boxes[i * per_list_num: (i + 1) * per_list_num]
                 pipe.send((img, per_boxes, image_meta, t))
+            result_info = result_log_recv.recv()
             log[data['name']] = image_meta
             log[data['name']]['shape'] = (w, h)
-            log[data['name']]['det_num'] = result_log_recv.recv()
-            log[data['name']]['time'] = time.time() - t
+            log[data['name']]['det_num'] = result_info['dets']
+            log[data['name']]['time'] = result_info['used_time']
             meta = log[data['name']]
             print_log(data['name'], meta)
         else:
+            print('Get stop command. Program will be stop in few seconds.')
             break
     for pipe in pipes:
         pipe.send(None)
@@ -122,7 +127,8 @@ def postprocess_unit(input_queue: Queue, cache_queue: Queue, det_cfg):
                                  labels=labels_,
                                  image_path=input_data['image_path'],
                                  patch_num=input_data['patch_num'],
-                                 class_num=input_data['score'].shape[1]))
+                                 class_num=input_data['score'].shape[1],
+                                 start_time=input_data['start_time']))
         else:
             input_queue.put(None)
             cache_queue.put(None)
@@ -152,8 +158,12 @@ def postprocess_collect(cache_queue: Queue, output_pipe: Pipe, log_pipe: Pipe, l
                                                                   labels_,
                                                                   cache_data['class_num'],
                                                                   det_cfg['nms_threshold'])
-                output_pipe.send(dict(rboxes=boxes, labels=labels, image_path=image_path))
-                log_pipe.send(len(labels))
+                used_time = time.time() - cache_data['start_time']
+                output_pipe.send(dict(rboxes=boxes,
+                                      labels=labels,
+                                      image_path=image_path,
+                                      used_time=used_time))
+                log_pipe.send(dict(dets=len(labels), used_time=used_time))
                 cache_box = []
                 cache_label = []
                 patch_count = 0
@@ -190,16 +200,10 @@ def output_result(zmq_result_queue, ALL_LABEL, result_pipe):
     while True:
         result = result_pipe.recv()
         if result:
-            # det_str = ''
             box = result['rboxes']
             label = result['labels']
-            # image_path = result['image_path']
 
             objs = [dict(label=ALL_LABEL[label_], box=box[j, :-1].tolist(), confidence=box[j, -1]) for j, label_ in enumerate(label)]
-            zmq_result_queue.put(dict(image=result['image_path'], objects=objs))
-            # objs = []
-            # for j, label_ in enumerate(label):
-            #     name = ALL_LABEL[label_]
-            #     objs.append(dict(label=name, box=box[j, :-1].tolist(), confidence=box[j, -1]))
+            zmq_result_queue.put(dict(image=result['image_path'], objects=objs, used_time=result['used_time']))
         else:
             break
