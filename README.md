@@ -104,7 +104,6 @@ port: 10000 # only server mode support this attribution
 model:
   engine_file: '/home/nvidia/Desktop/FCOSR/model/epoch_36_16_lite_nx.trt' # TensorRT engine file path
   labels: 'labels.txt' # calss name
-  num_speed: 2000 # FPS compute
 io: # only support whole/fix mode.
   input_dir: '/home/nvidia/DOTA_TEST/images/' # image folder path
   output_dir: 'result' # output
