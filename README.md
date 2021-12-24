@@ -99,7 +99,7 @@ A client running demo.([video file](source/infer_zmq_client.py-2021-12-24--21-54
 
 A configure file demo is:
 ```yaml
-mode: 1  # support mode: fix, whole, server
+mode: 'whole'  # support mode: fix, whole, server
 port: 10000 # only server mode support this attribution
 model:
   engine_file: '/home/nvidia/Desktop/FCOSR/model/epoch_36_16_lite_nx.trt' # TensorRT engine file path
@@ -131,7 +131,7 @@ postprocess: # postprocess configure
   max_det_num: 2000
   draw_image: # visualization configure, only support whole/fix mode.
     enable: 0 # switch
-    num: 20 # number
+    num: 20 # int or 'all'
 ```
 
 ## Run Mode
