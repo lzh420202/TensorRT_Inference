@@ -4,7 +4,8 @@
 > arXiv preprint ([arXiv:2111.10780](https://arxiv.org/abs/2111.10780)).
 
 
-This implement is modified from [TensorRT/efficientdet](https://github.com/NVIDIA/TensorRT/tree/main/samples/python/efficientdet). 
+This implement is modified from [TensorRT/efficientdet](https://github.com/NVIDIA/TensorRT/tree/main/samples/python/efficientdet). <br>
+Support Running Mode: fix, whole, server(base on zeroMQ, [wrappers](https://github.com/lzh420202/zmq_wrappers))
 
 The inference framework is shown bellow.
 ![framework](source/inference.png)
@@ -84,7 +85,7 @@ python infer_multi.py config/fix_mode/fcosr_tiny_nx.yaml
 # Big whole picture inference mode
 python infer_whole.py config/whole_mode/fcosr_tiny_agx_whole.yaml
 ```
-server mode
+server mode ([ZeroMQ Wrapper](https://github.com/lzh420202/zmq_wrappers))
 ```shell
 # server
 python infer_zmq_server.py config/zmq_server/fcosr_tiny_zmq_server.yaml
