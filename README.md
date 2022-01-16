@@ -12,8 +12,8 @@
 
 |Model|backbone|Param|Size|Input|GFLOPs|FPS|mAP|TensorRT|
 |:-|:-|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-|FCOSR-lite|Mobilenet v2|6.9M|51.63MB|1024×1024|101.25|7.64|74.30|[code: ABCD](https://pan.baidu.com/s/1Bhg3hfJJlc2-iJBPi79zFA)|
-|FCOSR-tiny|Mobilenet v2|3.52M|23.2MB|1024×1024|35.89|10.68|73.93|[code: ABCD](https://pan.baidu.com/s/1WPLV7xjXkMLSes5Jf8cFgw)|
+|FCOSR-lite|Mobilenet v2|6.9M|51.63MB|1024×1024|101.25|7.64(NX)|74.30|[code: ABCD](https://pan.baidu.com/s/1Bhg3hfJJlc2-iJBPi79zFA)|
+|FCOSR-tiny|Mobilenet v2|3.52M|23.2MB|1024×1024|35.89|10.68(NX)|73.93|[code: ABCD](https://pan.baidu.com/s/1WPLV7xjXkMLSes5Jf8cFgw)|
 
 </details>
 <br>
