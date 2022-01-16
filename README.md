@@ -1,8 +1,22 @@
-# FCOSR TensorRT Inference
+# An oriented object detection framework based on TensorRT
 
-> **[FCOSR: A Simple Anchor-free Rotated Detector for Aerial Object Detection](#)**<br>
-> arXiv preprint ([arXiv:2111.10780](https://arxiv.org/abs/2111.10780)).
+<details open>
+<summary> <font color="green">Supported network:</font> </summary>
 
+- [x] [FCOSR](https://arxiv.org/abs/2111.10780) ([code](https://github.com/lzh420202/FCOSR))
+
+</details>
+
+<details open>
+<summary> <font color="orange">TensorRT engine file:</font> </summary>
+
+|Model|backbone|Param|Size|Input|GFLOPs|FPS|mAP|TensorRT|
+|:-|:-|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+|FCOSR-lite|Mobilenet v2|6.9M|51.63MB|1024×1024|101.25|7.64|74.30|[code: ABCD](https://pan.baidu.com/s/1Bhg3hfJJlc2-iJBPi79zFA)|
+|FCOSR-tiny|Mobilenet v2|3.52M|23.2MB|1024×1024|35.89|10.68|73.93|[code: ABCD](https://pan.baidu.com/s/1WPLV7xjXkMLSes5Jf8cFgw)|
+
+</details>
+<br>
 
 This implement is modified from [TensorRT/efficientdet](https://github.com/NVIDIA/TensorRT/tree/main/samples/python/efficientdet). <br>
 Support Running Mode: fix, whole, server(base on zeroMQ, [wrappers](https://github.com/lzh420202/zmq_wrappers))
